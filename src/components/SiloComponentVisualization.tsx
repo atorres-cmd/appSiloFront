@@ -40,10 +40,11 @@ const SiloComponentVisualization: FC<SiloComponentVisualizationProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  const getComponentIcon = (type: SiloComponent["type"], color: string, status?: ComponentStatus) => {
+  const getComponentIcon = (type: SiloComponent["type"], color: string, status?: ComponentStatus, componentId?: string) => {
     // Variables para los componentes animados
     let componentColor = color;
     let animationClass = "";
+    let iconName = "";
     
     if (status) {
       // Aplicamos los mismos colores para todos los componentes según su estado
@@ -59,34 +60,16 @@ const SiloComponentVisualization: FC<SiloComponentVisualizationProps> = ({
     
     switch (type) {
       case "transelevador":
-        // Usar SVG personalizado para el transelevador
+        // Usar el componente CustomSvgIcon para el transelevador
+        iconName = componentId === "trans1" ? "T1" : "T2";
         return (
-          <div className={`relative ${componentColor} ${animationClass}`} style={{ width: '30px', height: '30px' }}>
-            <svg 
-              width="30" 
-              height="30" 
-              viewBox="0 0 100 100" 
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-full h-full"
-            >
-              {/* Base del transelevador */}
-              <rect x="20" y="70" width="60" height="10" fill="currentColor" stroke="#000000" strokeWidth="1" />
-              
-              {/* Columna vertical */}
-              <rect x="45" y="20" width="10" height="50" fill="currentColor" stroke="#000000" strokeWidth="1" />
-              
-              {/* Horquillas */}
-              <rect x="55" y="40" width="25" height="5" fill="#555555" stroke="#000000" strokeWidth="1" />
-              <rect x="55" y="50" width="25" height="5" fill="#555555" stroke="#000000" strokeWidth="1" />
-              
-              {/* Ruedas */}
-              <circle cx="30" cy="80" r="5" fill="#333333" stroke="#000000" strokeWidth="1" />
-              <circle cx="70" cy="80" r="5" fill="#333333" stroke="#000000" strokeWidth="1" />
-              
-              {/* Cabina */}
-              <rect x="25" y="50" width="20" height="20" fill="#444444" stroke="#000000" strokeWidth="1" />
-              <rect x="30" y="55" width="10" height="10" fill="#88CCFF" stroke="#000000" strokeWidth="0.5" /> {/* Ventana */}
-            </svg>
+          <div className={`relative ${animationClass}`} style={{ width: '30px', height: '30px' }}>
+            <CustomSvgIcon 
+              name={iconName}
+              className={`${status === "moving" ? "animate-pulse" : ""}`}
+              size={30}
+              color={status === "error" ? "red" : undefined}
+            />
           </div>
         );
       case "transferidor":
@@ -119,8 +102,9 @@ const SiloComponentVisualization: FC<SiloComponentVisualizationProps> = ({
       case "elevador":
         return (
           <div 
-            className={`relative ${componentColor} ${animationClass}`} 
+            className={`relative ${componentColor} ${animationClass} cursor-pointer hover:scale-110 transition-transform`} 
             style={{ width: '30px', height: '30px' }}
+            onClick={() => window.location.href = '/elevador'}
           >
             <svg 
               width="30" 
@@ -382,7 +366,7 @@ const SiloComponentVisualization: FC<SiloComponentVisualizationProps> = ({
                 title="Arrastra para mover"
               >
                 <div className="relative">
-                  {getComponentIcon(component.type, color, component.status)}
+                  {getComponentIcon(component.type, color, component.status, component.id)}
                   <span
                     className={
                       `absolute -top-2 -right-3 w-3 h-3 rounded-full border border-white shadow-sm ${statusColor}`
@@ -390,12 +374,14 @@ const SiloComponentVisualization: FC<SiloComponentVisualizationProps> = ({
                   />
                 </div>
                 {/* Mostrar etiquetas para transelevadores, carro transferidor y puente */}
-                {(component.type === "transelevador" || component.type === "transferidor" || component.type === "puente") && (
+                {(component.type === "transelevador" || component.type === "transferidor" || component.type === "puente" || component.type === "elevador") && (
                   <Link 
                     to={
                       component.id === "trans1" ? "/transelevador/t1" : 
                       component.id === "trans2" ? "/transelevador/t2" : 
                       component.id === "puente" ? "/puente" :
+                      component.id === "transferidor" ? "/ct" :
+                      component.id === "elevador" ? "/elevador" :
                       "#"
                     } 
                     className="no-underline"
@@ -405,6 +391,8 @@ const SiloComponentVisualization: FC<SiloComponentVisualizationProps> = ({
                         ? (component.id === "trans1" ? "T1" : component.id === "trans2" ? "T2" : `T${component.id.slice(-1)}`)
                         : component.type === "transferidor"
                         ? "CT"
+                        : component.type === "elevador"
+                        ? "EL"
                         : "PT"}
                     </span>
                   </Link>

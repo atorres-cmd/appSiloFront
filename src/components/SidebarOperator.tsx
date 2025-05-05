@@ -11,7 +11,8 @@ import {
   Boxes, 
   Footprints,
   History,
-  ArrowUpDown
+  ArrowUpDown,
+  Settings
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -27,9 +28,19 @@ const menuItems = [
     icon: Construction,
   },
   {
+    id: "control_tlv1",
+    label: "CTRL TLV1",
+    icon: Settings,
+  },
+  {
     id: "tlv2",
     label: "TLV2",
     icon: Construction,
+  },
+  {
+    id: "control_tlv2",
+    label: "CTRL TLV2",
+    icon: Settings,
   },
   {
     id: "puente",
@@ -78,8 +89,12 @@ const SidebarOperator = () => {
     // Navegación específica para los componentes
     if (id === "tlv1") {
       navigate("/transelevador/t1");
+    } else if (id === "control_tlv1") {
+      navigate("/control/tlv1");
     } else if (id === "tlv2") {
       navigate("/transelevador/t2");
+    } else if (id === "control_tlv2") {
+      navigate("/control/tlv2");
     } else if (id === "puente") {
       navigate("/puente");
     } else if (id === "carro") {
@@ -110,13 +125,13 @@ const SidebarOperator = () => {
               className={`flex flex-col items-center justify-center w-14 h-14 rounded-lg transition-all relative group
                 ${isActive 
                   ? "bg-operator-blue text-white shadow-md" 
-                  : "hover:bg-operator-sidebar-hover text-gray-600"}`}
+                  : "hover:bg-operator-sidebar-hover text-white"}`}
             >
               <Icon 
                 size={22} 
-                className={isActive ? "text-white" : "text-gray-100"} 
+                className="text-white" 
               />
-              <span className="text-[10px] mt-1 font-medium">{label}</span>
+              <span className="text-[10px] mt-1 font-medium !text-white" style={{ color: 'white' }}>{label}</span>
               
               {/* Indicador de elemento activo */}
               {isActive && (

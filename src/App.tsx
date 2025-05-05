@@ -11,6 +11,8 @@ import PuenteDetailPage from "./components/PuenteDetailPage";
 import CTDetailPage from "./components/CTDetailPage";
 import ElevadorDetailPage from "./components/ElevadorDetailPage";
 import AlarmasPage from "./components/AlarmasPage";
+import ControlTLV1Page from "./components/ControlTLV1Page";
+import ControlTLV2Page from "./components/ControlTLV2Page";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,8 @@ const App = () => (
           <Route path="/ct" element={<CTDetailPage />} />
           <Route path="/elevador" element={<ElevadorDetailPage />} />
           <Route path="/alarmas" element={<AlarmasPage />} />
+          <Route path="/control/tlv1" element={<ControlTLV1Page />} />
+          <Route path="/control/tlv2" element={<ControlTLV2Page />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

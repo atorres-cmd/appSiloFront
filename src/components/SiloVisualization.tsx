@@ -3,6 +3,8 @@ import { Truck } from "lucide-react";
 import SiloComponentInfoGroup from "./SiloComponentInfoGroup";
 import SiloComponentLegend from "./SiloComponentLegend";
 import SiloComponentVisualization from "./SiloComponentVisualization";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { useNavigate } from "react-router-dom";
 
 // Tipos para los componentes del silo
 type ComponentStatus = "active" | "inactive" | "error" | "moving";
@@ -36,6 +38,7 @@ const SILO_LEGENDS = [
 ];
 
 const SiloVisualization = () => {
+  const navigate = useNavigate();
   const [components, setComponents] = useState<SiloComponent[]>([
     {
       id: "trans1",
@@ -301,45 +304,61 @@ const SiloVisualization = () => {
                   const statusColor = getStatusColor(component.status);
                   
                   return (
-                    <div 
-                      key={component.id}
-                      className="absolute flex flex-col items-center justify-center"
-                      style={{
-                        left: `${xPerc}%`,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        zIndex: 20
-                      }}
-                    >
-                      <div className="relative">
-                        <div className={`relative ${statusColor}`} style={{ width: '30px', height: '30px' }}>
-                          <svg 
-                            width="30" 
-                            height="30" 
-                            viewBox="0 0 100 70" 
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="w-full h-full"
-                          >
-                            {/* Plataforma principal */}
-                            <rect x="5" y="25" width="90" height="20" fill="currentColor" stroke="#000000" strokeWidth="1" />
-                            
-                            {/* Ruedas */}
-                            <circle cx="20" cy="50" r="8" fill="#333333" stroke="#000000" strokeWidth="1" />
-                            <circle cx="80" cy="50" r="8" fill="#333333" stroke="#000000" strokeWidth="1" />
-                            
-                            {/* Detalles de la plataforma */}
-                            <rect x="15" y="20" width="70" height="5" fill="currentColor" stroke="#000000" strokeWidth="1" />
-                            <rect x="15" y="45" width="70" height="5" fill="currentColor" stroke="#000000" strokeWidth="1" />
-                            
-                            {/* Cabina de control */}
-                            <rect x="65" y="15" width="20" height="10" fill="#555555" stroke="#000000" strokeWidth="1" />
-                            <rect x="70" y="17" width="10" height="6" fill="#88CCFF" stroke="#000000" strokeWidth="0.5" /> {/* Ventana */}
-                          </svg>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div 
+                          className="absolute cursor-pointer hover:scale-110 transition-transform" 
+                          style={{ 
+                            position: 'absolute', 
+                            left: `${xPerc}%`, 
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            zIndex: 20
+                          }}
+                          onClick={() => navigate('/ct')}
+                        >
+                          <div className="relative">
+                            <div className={`relative ${statusColor}`} style={{ width: '30px', height: '30px' }}>
+                              <svg 
+                                width="30" 
+                                height="30" 
+                                viewBox="0 0 100 70" 
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-full h-full"
+                              >
+                                {/* Plataforma principal */}
+                                <rect x="5" y="25" width="90" height="20" fill="currentColor" stroke="#000000" strokeWidth="1" />
+                                
+                                {/* Ruedas */}
+                                <circle cx="20" cy="50" r="8" fill="#333333" stroke="#000000" strokeWidth="1" />
+                                <circle cx="80" cy="50" r="8" fill="#333333" stroke="#000000" strokeWidth="1" />
+                                
+                                {/* Detalles de la plataforma */}
+                                <rect x="15" y="20" width="70" height="5" fill="currentColor" stroke="#000000" strokeWidth="1" />
+                                <rect x="15" y="45" width="70" height="5" fill="currentColor" stroke="#000000" strokeWidth="1" />
+                                
+                                {/* Cabina de control */}
+                                <rect x="65" y="15" width="20" height="10" fill="#555555" stroke="#000000" strokeWidth="1" />
+                                <rect x="70" y="17" width="10" height="6" fill="#88CCFF" stroke="#000000" strokeWidth="0.5" /> {/* Ventana */}
+                              </svg>
+                            </div>
+                            <span className="absolute -top-2 -right-3 w-3 h-3 rounded-full border border-white shadow-sm bg-green-500" />
+                          </div>
+                          <span className="text-xs font-semibold text-gray-700 bg-white/80 rounded px-1 mt-1 shadow-sm hover:bg-gray-200">CT</span>
                         </div>
-                        <span className="absolute -top-2 -right-3 w-3 h-3 rounded-full border border-white shadow-sm bg-green-500" />
-                      </div>
-                      <span className="text-xs font-semibold text-gray-700 bg-white/80 rounded px-1 mt-1 shadow-sm">CT</span>
-                    </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div>
+                          <div className="font-semibold">Carro Transferidor</div>
+                          <div>
+                            Estado: <span className="capitalize">{component.status}</span>
+                          </div>
+                          <div className="space-y-1 mt-1">
+                            <div>Posición: Pasillo {component.position.x}</div>
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
                   );
                 })}
             </div>

@@ -88,6 +88,7 @@ const TranselevadorDetailPage = () => {
           </button>
           <button 
             className="flex items-center space-x-2 px-4 py-2 rounded-md text-white hover:bg-gray-600 transition-colors"
+            onClick={() => navigate('/control/tlv1')}
           >
             <Settings size={18} />
             <span>Control</span>
