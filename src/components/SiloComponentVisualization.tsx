@@ -174,19 +174,26 @@ const SiloComponentVisualization: FC<SiloComponentVisualizationProps> = ({
 
   const getAbsolutePosition = (component: SiloComponent) => {
     if (component.type === "transelevador") {
-      // Asegurarse de que los transelevadores no estén en el pasillo 13
-      const pasillo = component.position.y > 12 ? 12 : component.position.y;
+      // Obtener el pasillo (P1-P12) que corresponde al valor Y en los datos de MariaDB
+      // Los pasillos van de 1 a 12
+      const pasillo = Math.min(12, Math.max(1, component.position.y));
+      
+      // Calcular la posición horizontal (left) basada en el pasillo
+      // Cada pasillo ocupa 100/PASILLOS % del ancho total
       const xPerc = ((pasillo - 0.5) * (100 / PASILLOS));
       
-      // La coordenada x va de 0 (arriba) a 59 (abajo)
-      // 0 comienza justo después de las etiquetas de los pasillos
-      // 59 sería la línea anterior a PT
+      // La coordenada X en los datos de MariaDB va de 0 (abajo) a 59 (arriba)
+      // Necesitamos invertir la escala para que coincida con la visualización
       const MAX_ALTURA = 59;
+      
+      // Asegurarse de que la altura esté dentro del rango válido
       const altura = Math.min(MAX_ALTURA, Math.max(0, component.position.x));
       
-      // Ajustar para que use el 85% del espacio vertical disponible, dejando espacio arriba y abajo
-      // 10% de margen superior (para PT) y 5% de margen inferior (para etiquetas)
-      const yPerc = 10 + (altura * (85 / MAX_ALTURA));
+      // Calcular la posición vertical (top)
+      // El espacio vertical útil es del 65% (entre el 10% superior y el 25% inferior)
+      // 0 comienza bastante más arriba de las etiquetas de los pasillos (75%)
+      // 59 está cerca de la parte superior (10%)
+      const yPerc = 75 - (altura * (65 / MAX_ALTURA));
       
       return {
         left: `${xPerc}%`,

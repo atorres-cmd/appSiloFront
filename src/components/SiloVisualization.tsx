@@ -5,6 +5,7 @@ import SiloComponentLegend from "./SiloComponentLegend";
 import SiloComponentVisualization from "./SiloComponentVisualization";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useNavigate } from "react-router-dom";
+import { getTLV1StatusFromMariaDB, TLV1StatusData } from '../services/api';
 
 // Tipos para los componentes del silo
 type ComponentStatus = "active" | "inactive" | "error" | "moving";
@@ -39,6 +40,52 @@ const SILO_LEGENDS = [
 
 const SiloVisualization = () => {
   const navigate = useNavigate();
+  // Estado para los datos de TLV1 desde MariaDB
+  const [tlv1Data, setTLV1Data] = useState<TLV1StatusData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Cargar datos de TLV1 desde MariaDB
+  useEffect(() => {
+    const fetchTLV1Data = async () => {
+      try {
+        setLoading(true);
+        const data = await getTLV1StatusFromMariaDB();
+        setTLV1Data(data);
+        setError(null);
+
+        // Actualizar la posición del Transelevador 1 con los datos de MariaDB
+        setComponents(prev => prev.map(comp => {
+          if (comp.id === "trans1") {
+            return {
+              ...comp,
+              status: data.averia === 1 ? "error" : (data.ocupacion === 1 ? "moving" : "active"),
+              position: {
+                y: data.pasillo_actual,
+                x: data.x_actual,
+                z: data.z_actual
+              }
+            };
+          }
+          return comp;
+        }));
+      } catch (err) {
+        console.error('Error al cargar datos de TLV1:', err);
+        setError('Error al cargar datos del transelevador');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchTLV1Data();
+    
+    // Configurar intervalo para actualizar los datos cada 5 segundos
+    const intervalId = setInterval(fetchTLV1Data, 5000);
+    
+    // Limpiar intervalo al desmontar el componente
+    return () => clearInterval(intervalId);
+  }, []);
+
   const [components, setComponents] = useState<SiloComponent[]>([
     {
       id: "trans1",
@@ -52,7 +99,7 @@ const SiloVisualization = () => {
       name: "Transelevador 2",
       type: "transelevador",
       status: "active",
-      position: { y: 4, x: 30, z: 2 }, // x entre 0 y 50, y entre 1 y 12 (pasillo 4)
+      position: { y: 4, x: 59, z: 2 }, // Posicionado en la cota 59 (la más alta) en el pasillo 4
     },
     {
       id: "transferidor",
@@ -79,7 +126,7 @@ const SiloVisualization = () => {
   const [simulationPaused, setSimulationPaused] = useState(false);
   const simulationRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Simulación de cambios de estado (pausable)
+  // Simulación de cambios de estado (pausable) - Solo para componentes que no son el Transelevador 1
   useEffect(() => {
     if (simulationPaused) {
       if (simulationRef.current) clearInterval(simulationRef.current);
@@ -88,8 +135,13 @@ const SiloVisualization = () => {
     simulationRef.current = setInterval(() => {
       setComponents((prev) =>
         prev.map((comp) => {
-          // Transelevador puede moverse en x, y, z
-          if (comp.type === "transelevador") {
+          // No simulamos el Transelevador 1, ya que sus datos vienen de MariaDB
+          if (comp.id === "trans1") {
+            return comp;
+          }
+          
+          // Transelevador 2 puede moverse en x, y, z
+          if (comp.type === "transelevador" && comp.id === "trans2") {
             const newPos = { ...comp.position };
             let updated = false;
 
@@ -98,7 +150,7 @@ const SiloVisualization = () => {
               newPos.y = Math.max(
                 1,
                 Math.min(
-                  SILO_PASILLOS,
+                  12, // Limitamos a 12 pasillos como máximo
                   newPos.y + (Math.random() > 0.5 ? 1 : -1)
                 )
               );
@@ -401,6 +453,7 @@ const SiloVisualization = () => {
         <SiloComponentInfoGroup
           components={components}
           getStatusColor={getStatusColor}
+          tlv1Data={tlv1Data}
         />
       </div>
     </div>

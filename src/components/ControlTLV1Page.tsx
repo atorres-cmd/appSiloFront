@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -9,6 +9,7 @@ import HeaderOperator from "./HeaderOperator";
 import { Home, Eye, AlertTriangle, Clock, Settings, ArrowRightLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CustomSvgIcon from './CustomSvgIcon';
+import { getTLV1StatusFromMariaDB, TLV1StatusData } from '../services/api';
 
 // Tipo para los modos de operación
 type OperationMode = 'manual' | 'automatico';
@@ -33,10 +34,52 @@ const ControlTLV1Page = () => {
   const [occupationStatus, setOccupationStatus] = useState<OccupationStatus>('libre');
   const [faultStatus, setFaultStatus] = useState<FaultStatus>('ok');
   
+  // Estado para los datos de TLV1 desde MariaDB
+  const [tlv1Data, setTLV1Data] = useState<TLV1StatusData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const navigate = useNavigate();
 
+  // Cargar datos de TLV1 desde MariaDB
+  useEffect(() => {
+    const fetchTLV1Data = async () => {
+      try {
+        setLoading(true);
+        const data = await getTLV1StatusFromMariaDB();
+        setTLV1Data(data);
+        
+        // Actualizar estados con los datos recibidos
+        setCurrentPosition({ 
+          x: data.x_actual, 
+          y: data.y_actual, 
+          z: data.z_actual 
+        });
+        setCurrentAisle(data.pasillo_actual);
+        setOperationMode(data.modo === 1 ? 'automatico' : 'manual');
+        setOccupationStatus(data.ocupacion === 1 ? 'ocupado' : 'libre');
+        setFaultStatus(data.averia === 1 ? 'averia' : 'ok');
+        
+        setError(null);
+      } catch (err) {
+        console.error('Error al cargar datos de TLV1:', err);
+        setError('Error al cargar datos del transelevador');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchTLV1Data();
+    
+    // Configurar intervalo para actualizar los datos cada 5 segundos
+    const intervalId = setInterval(fetchTLV1Data, 5000);
+    
+    // Limpiar intervalo al desmontar el componente
+    return () => clearInterval(intervalId);
+  }, []);
+  
   // Actualizar el pasillo de origen cuando cambia el pasillo actual
-  React.useEffect(() => {
+  useEffect(() => {
     setSourceAisle(currentAisle.toString());
   }, [currentAisle]);
 
@@ -105,6 +148,9 @@ const ControlTLV1Page = () => {
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-gray-800">Control Transelevador T1</h1>
             <p className="text-gray-600 mt-1">Panel de control y configuración para el transelevador T1</p>
+            {loading && <p className="text-blue-500 mt-1">Cargando datos...</p>}
+            {error && <p className="text-red-500 mt-1">{error}</p>}
+            {tlv1Data && <p className="text-green-500 mt-1">Última actualización: {new Date(tlv1Data.timestamp).toLocaleString()}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

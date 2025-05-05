@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getTranselevadorData, getTranselevadorAlarmas, getTLV1StatusFromMariaDB, TranselevadorData, Alarma, TLV1StatusData } from '../services/api';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -7,50 +8,55 @@ import HeaderOperator from "./HeaderOperator";
 import { Home, Eye, AlertTriangle, Clock, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// Tipo para las alarmas
-interface Alarma {
-  id: string;
-  titulo: string;
-  descripcion: string;
-  timestamp: string;
-  tipo: 'error' | 'warning' | 'info' | 'success';
-}
-
-// Datos de ejemplo para las alarmas
-const alarmasEjemplo: Alarma[] = [
-  {
-    id: 'alm-001',
-    titulo: 'Error de posicionamiento',
-    descripcion: 'El transelevador T1 ha reportado un error en el posicionamiento vertical.',
-    timestamp: '2025-05-03T13:05:23',
-    tipo: 'error'
-  },
-  {
-    id: 'alm-002',
-    titulo: 'Mantenimiento preventivo',
-    descripcion: 'Se requiere mantenimiento preventivo del sistema hidráulico.',
-    timestamp: '2025-05-03T12:45:10',
-    tipo: 'warning'
-  },
-  {
-    id: 'alm-003',
-    titulo: 'Ciclo completado',
-    descripcion: 'El transelevador T1 ha completado el ciclo de almacenamiento #4532.',
-    timestamp: '2025-05-03T12:30:45',
-    tipo: 'success'
-  },
-  {
-    id: 'alm-004',
-    titulo: 'Actualización de firmware',
-    descripcion: 'Nueva actualización de firmware disponible para el controlador.',
-    timestamp: '2025-05-03T11:15:32',
-    tipo: 'info'
-  }
-];
+// Utilizamos los tipos y servicios importados desde api.ts
 
 const TranselevadorDetailPage = () => {
   const [activeTab, setActiveTab] = useState('general');
+  const [transelevadorData, setTranselevadorData] = useState<TranselevadorData | null>(null);
+  const [alarmas, setAlarmas] = useState<Alarma[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tlv1Data, setTLV1Data] = useState<TLV1StatusData | null>(null);
+  const [mariaDBError, setMariaDBError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Cargar datos del transelevador al montar el componente
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        // Obtener datos del transelevador T1
+        const data = await getTranselevadorData('TRANS-001');
+        setTranselevadorData(data);
+        
+        // Obtener alarmas del transelevador T1
+        const alarmasData = await getTranselevadorAlarmas('TRANS-001');
+        setAlarmas(alarmasData);
+        
+        // Obtener datos de TLV1 desde MariaDB
+        try {
+          const tlv1MariaDBData = await getTLV1StatusFromMariaDB();
+          setTLV1Data(tlv1MariaDBData);
+          setMariaDBError(null);
+        } catch (mariaDBErr) {
+          console.error('Error al cargar datos de TLV1 desde MariaDB:', mariaDBErr);
+          setMariaDBError('No se pudieron cargar los datos desde MariaDB');
+        }
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+    
+    // Actualizar datos cada 5 segundos
+    const interval = setInterval(() => {
+      loadData();
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="flex bg-operator-gray-bg min-h-screen font-sans">
@@ -99,6 +105,9 @@ const TranselevadorDetailPage = () => {
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-gray-800">Transelevador T1</h1>
             <p className="text-gray-600 mt-1">Monitor de estado y operaciones en tiempo real</p>
+            {loading && <p className="text-blue-500 mt-1">Cargando datos...</p>}
+            {mariaDBError && <p className="text-yellow-500 mt-1">{mariaDBError} - Usando datos de respaldo</p>}
+            {tlv1Data && <p className="text-green-500 mt-1">Última actualización desde MariaDB: {new Date(tlv1Data.timestamp).toLocaleString()}</p>}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -124,7 +133,7 @@ const TranselevadorDetailPage = () => {
                       className="h-full object-contain relative z-0"
                     />
                     <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full shadow-md">
-                      Estado: Activo
+                      Estado: {tlv1Data ? (tlv1Data.averia === 1 ? 'Avería' : 'Activo') : 'Activo'}
                     </div>
                   </div>
                   
@@ -135,7 +144,9 @@ const TranselevadorDetailPage = () => {
                       <div className="space-y-4">
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Tipo:</span>
-                          <span className="font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Extracción</span>
+                          <span className="font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                            {tlv1Data && tlv1Data.modo === 1 ? 'Automático' : 'Extracción'}
+                          </span>
                         </div>
                         
                         <div className="space-y-2">
@@ -147,7 +158,7 @@ const TranselevadorDetailPage = () => {
                             </div>
                             <div className="text-center">
                               <div className="text-xs text-blue-600">X</div>
-                              <div className="font-medium">7</div>
+                              <div className="font-medium">{tlv1Data ? tlv1Data.x_actual : 7}</div>
                             </div>
                             <div className="text-center">
                               <div className="text-xs text-blue-600">Y</div>
@@ -155,7 +166,7 @@ const TranselevadorDetailPage = () => {
                             </div>
                             <div className="text-center">
                               <div className="text-xs text-blue-600">Z</div>
-                              <div className="font-medium">1</div>
+                              <div className="font-medium">{tlv1Data ? tlv1Data.z_actual : 1}</div>
                             </div>
                           </div>
                         </div>
@@ -184,12 +195,12 @@ const TranselevadorDetailPage = () => {
                         
                         <div className="flex justify-between">
                           <span className="text-gray-600">Nº Tarea:</span>
-                          <span className="font-medium">TRK-2025-0458</span>
+                          <span className="font-medium">{tlv1Data ? `TRK-${tlv1Data.id}-${tlv1Data.matricula}` : 'TRK-2025-0458'}</span>
                         </div>
                         
                         <div className="flex justify-between">
                           <span className="text-gray-600">UMA:</span>
-                          <span className="font-medium">PALET-EU-0012458</span>
+                          <span className="font-medium">{tlv1Data ? `PALET-EU-${tlv1Data.matricula}` : 'PALET-EU-0012458'}</span>
                         </div>
                       </div>
                     </div>
@@ -200,16 +211,38 @@ const TranselevadorDetailPage = () => {
                       <div className="space-y-3">
                         <div className="flex justify-between">
                           <span className="text-gray-600">Modo:</span>
-                          <span className="font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Auto</span>
+                          <span className="font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                            {tlv1Data ? (tlv1Data.modo === 1 ? 'Auto' : 'Manual') : 'Auto'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Ocupación:</span>
-                          <span className="font-medium bg-green-100 text-green-800 px-2 py-0.5 rounded">Libre</span>
+                          <span className={`font-medium px-2 py-0.5 rounded ${tlv1Data && tlv1Data.ocupacion === 1 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                            {tlv1Data ? (tlv1Data.ocupacion === 1 ? 'Ocupado' : 'Libre') : 'Libre'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Avería:</span>
-                          <span className="font-medium bg-gray-100 text-gray-800 px-2 py-0.5 rounded">No</span>
+                          <span className={`font-medium px-2 py-0.5 rounded ${tlv1Data && tlv1Data.averia === 1 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {tlv1Data ? (tlv1Data.averia === 1 ? 'Sí' : 'No') : 'No'}
+                          </span>
                         </div>
+                        {tlv1Data && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Estado Fin Orden:</span>
+                            <span className="font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                              {tlv1Data.estadoFinOrden}
+                            </span>
+                          </div>
+                        )}
+                        {tlv1Data && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Resultado Fin Orden:</span>
+                            <span className="font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                              {tlv1Data.resultadoFinOrden}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -224,29 +257,35 @@ const TranselevadorDetailPage = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 <div>
-                  <p>Estado: Active</p>
+                  <p>Estado: {tlv1Data ? (tlv1Data.averia === 1 ? 'Avería' : 'Active') : 'Active'}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Coordenadas:</p>
                   <div className="grid grid-cols-4 gap-2">
                     <div>
                       <p className="text-blue-500 text-sm">Pasillo</p>
-                      <p className="text-lg font-medium">5</p>
+                      <p className="text-lg font-medium">{tlv1Data ? tlv1Data.pasillo_actual : 5}</p>
                     </div>
                     <div>
                       <p className="text-blue-500 text-sm">X</p>
-                      <p className="text-lg font-medium">7</p>
+                      <p className="text-lg font-medium">{tlv1Data ? tlv1Data.x_actual : 7}</p>
                     </div>
                     <div>
                       <p className="text-blue-500 text-sm">Y</p>
-                      <p className="text-lg font-medium">5</p>
+                      <p className="text-lg font-medium">{tlv1Data ? tlv1Data.y_actual : 5}</p>
                     </div>
                     <div>
                       <p className="text-blue-500 text-sm">Z</p>
-                      <p className="text-lg font-medium">1</p>
+                      <p className="text-lg font-medium">{tlv1Data ? tlv1Data.z_actual : 1}</p>
                     </div>
                   </div>
                 </div>
+                {tlv1Data && (
+                  <div>
+                    <p className="text-gray-500 mb-1">Matrícula:</p>
+                    <p className="text-lg font-medium">{tlv1Data.matricula}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -265,7 +304,7 @@ const TranselevadorDetailPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {alarmasEjemplo.map((alarma) => {
+                  {alarmas.map(alarma => {
                     let bgColor = "bg-white";
                     
                     if (alarma.tipo === 'error') {
@@ -312,32 +351,46 @@ const TranselevadorDetailPage = () => {
                     <CardTitle>Información General</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="font-medium text-sm text-gray-500">ID del Equipo</h3>
-                        <p>TRANS-001</p>
+                    {loading ? (
+                      <div className="p-4">Cargando información...</div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <h3 className="font-medium text-sm text-gray-500">ID del Equipo</h3>
+                          <p>{transelevadorData?.id || 'TRANS-001'}</p>
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-sm text-gray-500">Estado Actual</h3>
+                          <p className={transelevadorData?.status === 'active' ? 'text-green-500 font-medium' : 'text-red-500 font-medium'}>
+                            {transelevadorData?.status === 'active' ? 'Activo' : 'Inactivo'}
+                          </p>
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-sm text-gray-500">Posición</h3>
+                          <p>
+                            Pasillo 5, X: {transelevadorData?.position_x || 0}, 
+                            Y: {transelevadorData?.position_y || 0}, 
+                            Z: {transelevadorData?.position_z || 0}
+                          </p>
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-sm text-gray-500">Última Actividad</h3>
+                          <p>
+                            {transelevadorData?.last_activity 
+                              ? new Date(transelevadorData.last_activity).toLocaleTimeString() 
+                              : 'Desconocido'}
+                          </p>
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-sm text-gray-500">Ciclos Hoy</h3>
+                          <p>{transelevadorData?.cycles_today || 0}</p>
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-sm text-gray-500">Eficiencia</h3>
+                          <p>{transelevadorData?.efficiency || 0}%</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-medium text-sm text-gray-500">Estado Actual</h3>
-                        <p className="text-green-500 font-medium">Activo</p>
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-sm text-gray-500">Posición</h3>
-                        <p>Pasillo 5, X: 7, Y: 5, Z: 1</p>
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-sm text-gray-500">Última Actividad</h3>
-                        <p>Hace 5 minutos</p>
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-sm text-gray-500">Ciclos Hoy</h3>
-                        <p>127</p>
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-sm text-gray-500">Eficiencia</h3>
-                        <p>98.5%</p>
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

@@ -1,5 +1,6 @@
 
 import { FC } from "react";
+import { TLV1StatusData } from "../services/api";
 
 type ComponentStatus = "active" | "inactive" | "error" | "moving";
 
@@ -19,11 +20,13 @@ interface SiloComponent {
 interface SiloComponentInfoGroupProps {
   components: SiloComponent[];
   getStatusColor: (status: ComponentStatus) => string;
+  tlv1Data?: TLV1StatusData | null;
 }
 
 const SiloComponentInfoGroup: FC<SiloComponentInfoGroupProps> = ({
   components,
   getStatusColor,
+  tlv1Data,
 }) => {
   return (
     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -69,7 +72,8 @@ const SiloComponentInfoGroup: FC<SiloComponentInfoGroupProps> = ({
                       Y
                     </span>
                     <span className="text-base font-bold text-gray-700">
-                      {component.position.y}
+                      {/* Para el transelevador 1, usamos los datos de TLV1 si están disponibles */}
+                      {component.id === "trans1" && tlv1Data ? tlv1Data.y_actual : component.position.y}
                     </span>
                   </div>
                   <div className="flex flex-col items-center">
